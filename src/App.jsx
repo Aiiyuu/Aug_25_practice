@@ -7,6 +7,8 @@ import usersFromServer from './api/users';
 import categoriesFromServer from './api/categories';
 import productsFromServer from './api/products';
 
+const SORT_METHODS = ['ID', 'Product', 'Category', 'User'];
+
 const products = productsFromServer.map(product => {
   const category = categoriesFromServer.find(
     item => item.id === product.categoryId,
@@ -20,8 +22,47 @@ const products = productsFromServer.map(product => {
   };
 });
 
-const getPreparedProducts = (productsList, filters) => {
-  const { selectedUser = 'all', query, selectedCategories } = filters;
+function getSortedProducts(productList, sortMethod) {
+  let sortedList = [...productList];
+
+  switch (sortMethod) {
+    case 'ID':
+      sortedList = sortedList.sort((a, b) => a.id - b.id);
+      break;
+
+    case 'Product':
+      sortedList = sortedList.sort((a, b) => {
+        return a.name.localeCompare(b.name);
+      });
+      break;
+
+    case 'Category':
+      sortedList = sortedList.sort((a, b) => {
+        return a.category.title.localeCompare(b.category.title);
+      });
+      break;
+
+    case 'User':
+      sortedList = sortedList.sort((a, b) => {
+        return a.user.name.localeCompare(b.user.name);
+      });
+      break;
+
+    default:
+      throw new Error('Invalid sort method');
+  }
+
+  return sortedList;
+}
+
+function getPreparedProducts(productsList, filters) {
+  const {
+    selectedUser = 'all',
+    query,
+    selectedCategories,
+    selectedSortMethod,
+    isReversed,
+  } = filters;
 
   let preparedProducts = [...productsList];
 
@@ -43,12 +84,18 @@ const getPreparedProducts = (productsList, filters) => {
     });
   }
 
-  return preparedProducts;
-};
+  if (selectedSortMethod) {
+    preparedProducts = getSortedProducts(preparedProducts, selectedSortMethod);
+  }
+
+  return isReversed ? [...preparedProducts].reverse() : preparedProducts;
+}
 
 export const App = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedSortMethod, setSelectedSortMethod] = useState(null);
+  const [isReversed, setIsReversed] = useState(false);
   const [query, setQuery] = useState('');
 
   const selectUser = (id = 'all') => {
@@ -79,6 +126,18 @@ export const App = () => {
     }
   };
 
+  const selectSortMethod = method => {
+    if (selectedSortMethod !== method) {
+      setSelectedSortMethod(method);
+      setIsReversed(false);
+    } else if (selectedSortMethod === method && !isReversed) {
+      setIsReversed(true);
+    } else {
+      setSelectedSortMethod(null);
+      setIsReversed(false);
+    }
+  };
+
   const updateQuery = newQuery => {
     if (newQuery.trimStart() !== query) {
       setQuery(newQuery.trimStart());
@@ -99,6 +158,8 @@ export const App = () => {
     selectedUser,
     query,
     selectedCategories,
+    selectedSortMethod,
+    isReversed,
   });
 
   return (
@@ -209,49 +270,27 @@ export const App = () => {
             >
               <thead>
                 <tr>
-                  <th>
-                    <span className="is-flex is-flex-wrap-nowrap">
-                      ID
-                      <a href="#/">
-                        <span className="icon">
-                          <i data-cy="SortIcon" className="fas fa-sort" />
-                        </span>
-                      </a>
-                    </span>
-                  </th>
-
-                  <th>
-                    <span className="is-flex is-flex-wrap-nowrap">
-                      Product
-                      <a href="#/">
-                        <span className="icon">
-                          <i data-cy="SortIcon" className="fas fa-sort-down" />
-                        </span>
-                      </a>
-                    </span>
-                  </th>
-
-                  <th>
-                    <span className="is-flex is-flex-wrap-nowrap">
-                      Category
-                      <a href="#/">
-                        <span className="icon">
-                          <i data-cy="SortIcon" className="fas fa-sort-up" />
-                        </span>
-                      </a>
-                    </span>
-                  </th>
-
-                  <th>
-                    <span className="is-flex is-flex-wrap-nowrap">
-                      User
-                      <a href="#/">
-                        <span className="icon">
-                          <i data-cy="SortIcon" className="fas fa-sort" />
-                        </span>
-                      </a>
-                    </span>
-                  </th>
+                  {SORT_METHODS.map(method => (
+                    <th key={method}>
+                      <span className="is-flex is-flex-wrap-nowrap">
+                        {method}
+                        <a href="#/" onClick={() => selectSortMethod(method)}>
+                          <span className="icon">
+                            <i
+                              data-cy="SortIcon"
+                              className={cn('fas', {
+                                'fa-sort': selectedSortMethod !== method,
+                                'fa-sort-down':
+                                  isReversed && selectedSortMethod === method,
+                                'fa-sort-up':
+                                  !isReversed && selectedSortMethod === method,
+                              })}
+                            />
+                          </span>
+                        </a>
+                      </span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
 
