@@ -21,7 +21,7 @@ const products = productsFromServer.map(product => {
 });
 
 const getPreparedProducts = (productsList, filters) => {
-  const { selectedUser = 'all', query } = filters;
+  const { selectedUser = 'all', query, selectedCategories } = filters;
 
   let preparedProducts = [...productsList];
 
@@ -37,11 +37,18 @@ const getPreparedProducts = (productsList, filters) => {
     });
   }
 
+  if (selectedCategories.length) {
+    preparedProducts = preparedProducts.filter(item => {
+      return selectedCategories.includes(item.categoryId);
+    });
+  }
+
   return preparedProducts;
 };
 
 export const App = () => {
   const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedCategories, setSelectedCategories] = useState([]);
   const [query, setQuery] = useState('');
 
   const selectUser = (id = 'all') => {
@@ -53,6 +60,22 @@ export const App = () => {
 
     if (selectUser.id !== id) {
       setSelectedUser(usersFromServer.find(user => user.id === id));
+    }
+  };
+
+  const selectCategory = id => {
+    if (!selectedCategories.includes(id)) {
+      setSelectedCategories(prev => [...prev, id]);
+    } else {
+      setSelectedCategories(prev => {
+        return prev.filter(categoryId => categoryId !== id);
+      });
+    }
+  };
+
+  const selectAllCategories = () => {
+    if (selectedCategories.length) {
+      setSelectedCategories([]);
     }
   };
 
@@ -69,11 +92,13 @@ export const App = () => {
   const resetFilters = () => {
     setSelectedUser(null);
     setQuery('');
+    setSelectedCategories([]);
   };
 
   const preparedProducts = getPreparedProducts(products, {
     selectedUser,
     query,
+    selectedCategories,
   });
 
   return (
@@ -141,33 +166,26 @@ export const App = () => {
               <a
                 href="#/"
                 data-cy="AllCategories"
-                className="button is-success mr-6 is-outlined"
+                className={cn('button is-success mr-6', {
+                  'is-outlined': selectedCategories.length,
+                })}
+                onClick={selectAllCategories}
               >
                 All
               </a>
 
-              <a
-                data-cy="Category"
-                className="button mr-2 my-1 is-info"
-                href="#/"
-              >
-                Category 1
-              </a>
-
-              <a data-cy="Category" className="button mr-2 my-1" href="#/">
-                Category 2
-              </a>
-
-              <a
-                data-cy="Category"
-                className="button mr-2 my-1 is-info"
-                href="#/"
-              >
-                Category 3
-              </a>
-              <a data-cy="Category" className="button mr-2 my-1" href="#/">
-                Category 4
-              </a>
+              {categoriesFromServer.map(category => (
+                <a
+                  data-cy="Category"
+                  className={cn('button mr-2 my-1', {
+                    'is-info': selectedCategories.includes(category.id),
+                  })}
+                  onClick={() => selectCategory(category.id)}
+                  href="#/"
+                >
+                  {category.title}
+                </a>
+              ))}
             </div>
 
             <div className="panel-block">
